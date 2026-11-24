@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Operação Coleta - ODS 11</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Fredoka', Arial, sans-serif;
+            touch-action: none;
+        }
+        #gameWrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        #gameWrapper:fullscreen {
+            background-color: #102027;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #e0f7fa;
+            border: 3px solid #006064;
+            box-shadow: 0px 0px 20px rgba(0,0,0,0.3);
+            max-width: 98vw;
+            max-height: 96vh;
+            aspect-ratio: 800 / 450;
+        }
+        #gameWrapper:fullscreen canvas {
+            width: auto;
+            height: auto;
+            max-width: 100vw;
+            max-height: 100vh;
+        }
+        #fullscreenBtn {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 25;
+            padding: 6px 11px;
+            font-family: 'Fredoka', Arial, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            background-color: rgba(0, 96, 100, 0.88);
+            border: 2px solid #141414;
+            border-radius: 8px;
+            cursor: pointer;
+            text-shadow: 0 1px 0 #141414;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        #fullscreenBtn:hover {
+            background-color: #00838f;
+        }
+        /* Aba/modal para digitar o apelido */
+        #nicknameModal {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        #nicknameBox {
+            background: #f1f8e9;
+            border: 4px solid #2e7d32;
+            border-radius: 18px;
+            padding: 22px 26px;
+            width: 320px;
+            max-width: 85vw;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+        }
+        #nicknameTitle {
+            margin: 0 0 14px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            -webkit-text-stroke: 1.5px #1b1b1b;
+            text-shadow: 0 2px 0 #1b1b1b;
+            letter-spacing: 0.5px;
+        }
+        #nicknameInput {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            font-family: 'Fredoka', Arial, sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1b5e20;
+            background: #ffffff;
+            border: 3px solid #558b2f;
+            border-radius: 10px;
+            text-align: center;
+            outline: none;
+            margin-bottom: 16px;
+        }
+        #nicknameInput:focus {
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25);
+        }
+        .nicknameActions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .nickBtn {
+            flex: 1;
+            padding: 9px 12px;
+            font-family: 'Fredoka', Arial, sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            border: 2.5px solid #1b1b1b;
+            border-radius: 10px;
+            cursor: pointer;
+            text-shadow: 0 1.5px 0 #1b1b1b;
+        }
+        #saveNicknameBtn {
+            background-color: #66bb6a;
+        }
+        #saveNicknameBtn:hover {
+            background-color: #4caf50;
+        }
+        #cancelNicknameBtn {
+            background-color: #ef5350;
+        }
+        #cancelNicknameBtn:hover {
+            background-color: #e53935;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameWrapper">
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+    <button type="button" id="fullscreenBtn" title="Tela cheia (Tecla F)">Tela Cheia [F]</button>
+
+    <div id="nicknameModal">
+        <div id="nicknameBox">
+            <h3 id="nicknameTitle">Escolha seu Apelido</h3>
+            <input type="text" id="nicknameInput" maxlength="16" placeholder="Ex: cachorrinho">
+            <div class="nicknameActions">
+                <button type="button" id="cancelNicknameBtn" class="nickBtn">Cancelar</button>
+                <button type="button" id="saveNicknameBtn" class="nickBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', function () {
+    const gameWrapper = document.getElementById('gameWrapper');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+    if (!canvas || !ctx) return;
+
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const nicknameModal = document.getElementById('nicknameModal');
+    const nicknameTitle = document.getElementById('nicknameTitle');
+    const nicknameInput = document.getElementById('nicknameInput');
+    const saveNicknameBtn = document.getElementById('saveNicknameBtn');
+    const cancelNicknameBtn = document.getElementById('cancelNicknameBtn');
+
+    function safeStorageGet(key, fallback = '') {
+        try {
+            const val = localStorage.getItem(key);
+            return val !== null ? val : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function safeStorageSet(key, value) {
+        try {
+            localStorage.setItem(key, String(value));
+        } catch (e) {
+            // ignora bloqueio de storage
+        }
+    }
+
+    // Idiomas suportados: 'pt', 'en', 'es'
+    let currentLang = safeStorageGet('operacaoColetaLang', 'pt');
+    if (!['pt', 'en', 'es'].includes(currentLang)) {
+        currentLang = 'pt';
+    }
+
+    const I18N = {
+        pt: {
+            pageTitle: "Operação Coleta - ODS 11",
+            fullscreenOpen: "Tela Cheia [F]",
+            fullscreenClose: "Sair da Tela Cheia [F]",
+            nicknameTitle: "Escolha seu Apelido",
+            nicknamePlaceholder: "Ex: cachorrinho",
+            save: "Salvar",
+            cancel: "Cancelar",
+            gameTitleFallback: "OPERAÇÃO COLETA",
+            playFallback: "JOGAR",
+            rankingFallback: "TOP",
+            recordLabel: "Seu Record",
+            tutorialTitle: "COMO JOGAR",
+            tutorialRule1: "1. Os lixos caem do céu: arraste cada item até a lixeira correta!",
+            tutorialRule2: "2. Acerte para ganhar +50 pontos. Errar ou deixar cair tira 1 vida!",
+            tutorialLives: "Você começa com 3 vidas:",
+            skipTutorial: "Pular  >>",
+            backToMenu: "Voltar ao Menu",
+            scoreLabel: "Pontuação",
+            livesLabel: "Vidas",
+            pausedTitle: "PAUSADO",
+            resumeGame: "Voltar ao Jogo",
+            mainMenu: "Menu Principal",
+            quitConfirm1: "Você realmente quer sair da partida",
+            quitConfirm2: "e voltar ao menu principal?",
+            yes: "Sim",
+            no: "Não",
+            gameOverTitle: "FIM DE JOGO",
+            playerLabel: "Jogador",
+            pointsLabel: "Pontos",
+            highScoreLabel: "Seu Recorde",
+            playAgain: "Jogar Novamente",
+            settingsTitle: "CONFIGURAÇÕES",
+            languageLabel: "Idioma / Language / Idioma",
+            langPt: "Português",
+            langEn: "Inglês",
+            langEs: "Espanhol",
+            close: "Fechar",
+            types: {
+                'Plástico':   'Plástico',
+                'Metal':      'Metal',
+                'Vidro':      'Vidro',
+                'Papel':      'Papel',
+                'Orgânico':   'Orgânico',
+                'Eletrônico': 'Eletrônico'
+            }
+        },
+        en: {
+            pageTitle: "Collection Operation - SDG 11",
+            fullscreenOpen: "Fullscreen [F]",
+            fullscreenClose: "Exit Fullscreen [F]",
+            nicknameTitle: "Choose your Nickname",
+            nicknamePlaceholder: "Ex: little_dog",
+            save: "Save",
+            cancel: "Cancel",
+            gameTitleFallback: "COLLECTION OPERATION",
+            playFallback: "PLAY",
+            rankingFallback: "TOP",
+            recordLabel: "Your Best",
+            tutorialTitle: "HOW TO PLAY",
+            tutorialRule1: "1. Trash falls from above: drag each item to the matching bin!",
+            tutorialRule2: "2. Match right for +50 pts. Mistakes or misses cost 1 life!",
+            tutorialLives: "You start with 3 lives:",
+            skipTutorial: "Skip  >>",
+            backToMenu: "Back to Menu",
+            scoreLabel: "Score",
+            livesLabel: "Lives",
+            pausedTitle: "PAUSED",
+            resumeGame: "Resume Game",
+            mainMenu: "Main Menu",
+            quitConfirm1: "Do you really want to quit the match",
+            quitConfirm2: "and return to the main menu?",
+            yes: "Yes",
+            no: "No",
+            gameOverTitle: "GAME OVER",
+            playerLabel: "Player",
+            pointsLabel: "Score",
+            highScoreLabel: "Your Best",
+            playAgain: "Play Again",
+            settingsTitle: "SETTINGS",
+            languageLabel: "Language",
+            langPt: "Portuguese",
+            langEn: "English",
+            langEs: "Spanish",
+            close: "Close",
+            types: {
+                'Plástico':   'Plastic',
+                'Metal':      'Metal',
+                'Vidro':      'Glass',
+                'Papel':      'Paper',
+                'Orgânico':   'Organic',
+                'Eletrônico': 'E-Waste'
+            }
+        },
+        es: {
+            pageTitle: "Operación Colecta - ODS 11",
+            fullscreenOpen: "Pantalla Completa [F]",
+            fullscreenClose: "Salir de Pantalla Completa [F]",
+            nicknameTitle: "Elige tu Apodo",
+            nicknamePlaceholder: "Ej: perrito",
+            save: "Guardar",
+            cancel: "Cancelar",
+            gameTitleFallback: "OPERACIÓN COLECTA",
+            playFallback: "JUGAR",
+            rankingFallback: "TOP",
+            recordLabel: "Tu Récord",
+            tutorialTitle: "CÓMO JUGAR",
+            tutorialRule1: "1. La basura cae del cielo: ¡arrastra cada ítem al contenedor correcto!",
+            tutorialRule2: "2. Acierta para ganar +50 pts. ¡Fallar o dejar caer quita 1 vida!",
+            tutorialLives: "Empiezas con 3 vidas:",
+            skipTutorial: "Saltar  >>",
+            backToMenu: "Volver al Menú",
+            scoreLabel: "Puntaje",
+            livesLabel: "Vidas",
+            pausedTitle: "PAUSADO",
+            resumeGame: "Volver al Juego",
+            mainMenu: "Menú Principal",
+            quitConfirm1: "¿Realmente quieres salir de la partida",
+            quitConfirm2: "y volver al menú principal?",
+            yes: "Sí",
+            no: "No",
+            gameOverTitle: "FIN DEL JUEGO",
+            playerLabel: "Jugador",
+            pointsLabel: "Puntos",
+            highScoreLabel: "Tu Récord",
+            playAgain: "Jugar de Nuevo",
+            settingsTitle: "CONFIGURACIÓN",
+            languageLabel: "Idioma",
+            langPt: "Portugués",
+            langEn: "Inglés",
+            langEs: "Español",
+            close: "Cerrar",
+            types: {
+                'Plástico':   'Plástico',
+                'Metal':      'Metal',
+                'Vidro':      'Vidrio',
+                'Papel':      'Papel',
+                'Orgânico':   'Orgánico',
+                'Eletrônico': 'Electrónico'
+            }
+        }
+    };
+
+    function t(key) {
+        return (I18N[currentLang] && I18N[currentLang][key]) || I18N.pt[key] || key;
+    }
+
+    function getTypeLabel(internalType) {
+        return (I18N[currentLang] && I18N[currentLang].types && I18N[currentLang].types[internalType]) || internalType;
+    }
+
+    function updateFullscreenButtonLabel() {
+        if (!fullscreenBtn) return;
+        const isFull = !!document.fullscreenElement;
+        fullscreenBtn.textContent = isFull ? t('fullscreenClose') : t('fullscreenOpen');
+    }
+
+    function applyLanguageToDOM() {
+        document.title = t('pageTitle');
+        document.documentElement.lang = currentLang === 'pt' ? 'pt-BR' : currentLang;
+        if (nicknameTitle) nicknameTitle.textContent = t('nicknameTitle');
+        if (nicknameInput) nicknameInput.placeholder = t('nicknamePlaceholder');
+        if (saveNicknameBtn) saveNicknameBtn.textContent = t('save');
+        if (cancelNicknameBtn) cancelNicknameBtn.textContent = t('cancel');
+        updateFullscreenButtonLabel();
+    }
+
+    function setLanguage(langCode) {
+        if (!I18N[langCode]) return;
+        currentLang = langCode;
+        safeStorageSet('operacaoColetaLang', currentLang);
+        applyLanguageToDOM();
+    }
+
+    async function toggleFullscreen() {
+        try {
+            if (!document.fullscreenElement) {
+                if (gameWrapper && gameWrapper.requestFullscreen) {
+                    await gameWrapper.requestFullscreen();
+                } else if (canvas.requestFullscreen) {
+                    await canvas.requestFullscreen();
+                }
+            } else if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            }
+        } catch (err) {
+            console.log('Não foi possível alternar tela cheia:', err);
+        }
+    }
+
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleFullscreen();
+        });
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreenButtonLabel);
+
+    // Estados: 'menu', 'tutorial', 'playing', 'paused', 'gameover'
+    let gameState = 'menu';
+    let isSettingsOpen = false;
+    let tutorialSource = 'fromMenu';
+    let hasSeenTutorial = safeStorageGet('operacaoColetaTutorialSeen', 'false') === 'true';
+
+    let isNicknameModalOpen = false;
+    let isConfirmQuitOpen = false;
+    let playerName = safeStorageGet('operacaoColetaPlayerName', '');
+    let score = 0;
+    let lives = 3;
+    let spawnRate = 85;
+    let frameCount = 0;
+    let bgFrameCount = 0;
+    let lastErrorMessage = '';
+
+    const parsedHigh = parseInt(safeStorageGet('operacaoColetaHighScore', '0'), 10);
+    let highScore = Number.isNaN(parsedHigh) ? 0 : parsedHigh;
+
+    document.addEventListener('keydown', function (e) {
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea' || isNicknameModalOpen) {
+            return;
+        }
+        if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            toggleFullscreen();
+        } else if (e.key === 'Escape' && isSettingsOpen) {
+            e.preventDefault();
+            isSettingsOpen = false;
+        }
+    });
+
+    // Botões do jogo
+    const pauseBtn = { x: 15, y: 12, w: 40, h: 40 };
+    const resumeBtn = { x: 265, y: 195, w: 270, h: 48 };
+    const pauseMenuBtn = { x: 265, y: 260, w: 270, h: 48 };
+    const confirmYesBtn = { x: 245, y: 262, w: 140, h: 48 };
+    const confirmNoBtn  = { x: 415, y: 262, w: 140, h: 48 };
+    const retryBtn = { x: 215, y: 310, w: 175, h: 44 };
+    const gameOverMenuBtn = { x: 410, y: 310, w: 175, h: 44 };
+
+    // Botão inferior do tutorial ("Pular >>" na 1ª vez ou "Voltar ao Menu" pelo menu)
+    const tutorialActionBtn = { x: 295, y: 388, w: 210, h: 42 };
+
+    // Botões quadrados (54x54 px)
+    const squareBtnSize = 54;
+    const squareBtnX = 785 - squareBtnSize; // 731
+    const menuTutorialBtnRect = { x: squareBtnX, y: 84,  w: squareBtnSize, h: squareBtnSize };
+    const menuRankingBtnRect  = { x: squareBtnX, y: 146, w: squareBtnSize, h: squareBtnSize };
+    const menuConfigBtnRect   = { x: 15, y: 450 - 15 - squareBtnSize, w: squareBtnSize, h: squareBtnSize };
+
+    // Botões dentro do modal de Configurações
+    const settingsBoxRect = { x: 210, y: 85, w: 380, h: 280 };
+    const langPtBtn = { x: 255, y: 162, w: 290, h: 38 };
+    const langEnBtn = { x: 255, y: 208, w: 290, h: 38 };
+    const langEsBtn = { x: 255, y: 254, w: 290, h: 38 };
+    const closeSettingsBtn = { x: 315, y: 306, w: 170, h: 40 };
+
+    const trashHighlightColors = {
+        'Orgânico':   '#8D6E63',
+        'Plástico':   '#E53935',
+        'Papel':      '#1E88E5',
+        'Vidro':      '#43A047',
+        'Metal':      '#FDD835',
+        'Eletrônico': '#FB8C00'
+    };
+
+    const binW = 85;
+    const binH = 115;
+    const binY = 325;
+
+    const bins = [
+        { type: 'Plástico',   baseName: 'lixeira_plastico',   x: 41,  y: binY, w: binW, h: binH },
+        { type: 'Metal',      baseName: 'lixeira_metal',      x: 168, y: binY, w: binW, h: binH },
+        { type: 'Vidro',      baseName: 'lixeira_vidro',      x: 294, y: binY, w: binW, h: binH },
+        { type: 'Papel',      baseName: 'lixeira_papel',      x: 421, y: binY, w: binW, h: binH },
+        { type: 'Orgânico',   baseName: 'lixeira_organico',   x: 547, y: binY, w: binW, h: binH },
+        { type: 'Eletrônico', baseName: 'lixeira_eletronico', x: 674, y: binY, w: binW, h: binH }
+    ];
+
+    const trashTypes = [
+        { type: 'Plástico',   baseName: 'plastico' },
+        { type: 'Metal',      baseName: 'metal' },
+        { type: 'Vidro',      baseName: 'vidro' },
+        { type: 'Papel',      baseName: 'papel' },
+        { type: 'Orgânico',   baseName: 'organico' },
+        { type: 'Eletrônico', baseName: 'eletronico' }
+    ];
+
+    const menuAssetsConfig = [
+        { key: 'fundo',    candidates: ['fundo_jogo'] },
+        { key: 'logo',     candidates: ['logo_menu'] },
+        { key: 'apelido',  candidates: ['bnt_apelido', 'btn_apelido'] },
+        { key: 'ranking',  candidates: ['btn_ranking'] },
+        { key: 'tutorial', candidates: ['btn_tutorial'] },
+        { key: 'config',   candidates: ['btn_config'] },
+        { key: 'jogar',    candidates: ['btn_jogar'] },
+        { key: 'coracao',  candidates: ['coracao'] }
+    ];
+
+    let trashImages = {};
+    let binImages = {};
+    let menuImages = {};
+
+    let menuHitboxes = {
+        apelido: null,
+        tutorial: menuTutorialBtnRect,
+        ranking: menuRankingBtnRect,
+        config: menuConfigBtnRect,
+        jogar: null
+    };
+
+    function loadAssetCandidates(candidates, onReady) {
+        const list = Array.isArray(candidates) ? candidates : [candidates];
+        let nameIdx = 0;
+
+        function tryName() {
+            if (nameIdx >= list.length) {
+                onReady(null);
+                return;
+            }
+
+            const baseName = list[nameIdx];
+            nameIdx++;
+
+            const imgPng = new Image();
+            imgPng.onload = function() { onReady(imgPng); };
+            imgPng.onerror = function() {
+                const imgJpg = new Image();
+                imgJpg.onload = function() { onReady(imgJpg); };
+                imgJpg.onerror = function() { tryName(); };
+                imgJpg.src = baseName + '.jpg';
+            };
+            imgPng.src = baseName + '.png';
+        }
+
+        tryName();
+    }
+
+    function preloadImages() {
+        trashTypes.forEach(item => {
+            loadAssetCandidates([item.baseName], (img) => { trashImages[item.type] = img; });
+        });
+        bins.forEach(bin => {
+            loadAssetCandidates([bin.baseName], (img) => { binImages[bin.type] = img; });
+        });
+        menuAssetsConfig.forEach(asset => {
+            loadAssetCandidates(asset.candidates, (img) => { menuImages[asset.key] = img; });
+        });
+    }
+
+    function isImgReady(img) {
+        return Boolean(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+    }
+
+    function drawGameBackground() {
+        const bgImg = menuImages.fundo;
+        if (isImgReady(bgImg)) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#64b5f6');
+            grad.addColorStop(1, '#e0f7fa');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    function openNicknameModal() {
+        if (!nicknameModal || !nicknameInput) return;
+        isNicknameModalOpen = true;
+        applyLanguageToDOM();
+        nicknameInput.value = playerName;
+        nicknameModal.style.display = 'flex';
+        setTimeout(() => nicknameInput.focus(), 30);
+    }
+
+    function closeNicknameModal() {
+        isNicknameModalOpen = false;
+        if (nicknameModal) nicknameModal.style.display = 'none';
+    }
+
+    function confirmNickname() {
+        if (!nicknameInput) return;
+        const cleaned = nicknameInput.value.trim().replace(/\s+/g, ' ');
+        playerName = cleaned;
+        safeStorageSet('operacaoColetaPlayerName', playerName);
+        closeNicknameModal();
+    }
+
+    if (saveNicknameBtn) saveNicknameBtn.addEventListener('click', confirmNickname);
+    if (cancelNicknameBtn) cancelNicknameBtn.addEventListener('click', closeNicknameModal);
+
+    if (nicknameInput) {
+        nicknameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmNickname();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeNicknameModal();
+            }
+        });
+    }
+
+    if (nicknameModal) {
+        nicknameModal.addEventListener('click', (e) => {
+            if (e.target === nicknameModal) {
+                closeNicknameModal();
+            }
+        });
+    }
+
+    function drawCartoonText(text, x, y, options = {}) {
+        const {
+            fontSize = 22,
+            fillColor = '#ffffff',
+            strokeColor = '#141414',
+            strokeWidth = 5,
+            align = 'center',
+            baseline = 'alphabetic',
+            maxWidth = undefined
+        } = options;
+
+        ctx.save();
+        ctx.font = `700 ${fontSize}px 'Fredoka', Arial, sans-serif`;
+        ctx.textAlign = align;
+        ctx.textBaseline = baseline;
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+
+        if (strokeWidth > 0) {
+            ctx.lineWidth = strokeWidth;
+            ctx.strokeStyle = strokeColor;
+            if (maxWidth !== undefined) ctx.strokeText(text, x, y, maxWidth);
+            else ctx.strokeText(text, x, y);
+        }
+
+        ctx.fillStyle = fillColor;
+        if (maxWidth !== undefined) ctx.fillText(text, x, y, maxWidth);
+        else ctx.fillText(text, x, y);
+        ctx.restore();
+    }
+
+    function drawImageProportional(img, x, y, maxW, maxH, anchorX = 'left', anchorY = 'top', fallbackFn = null) {
+        if (!isImgReady(img)) {
+            let finalX = x;
+            if (anchorX === 'center') finalX = x - maxW / 2;
+            else if (anchorX === 'right') finalX = x - maxW;
+
+            let finalY = y;
+            if (anchorY === 'center') finalY = y - maxH / 2;
+            else if (anchorY === 'bottom') finalY = y - maxH;
+
+            if (fallbackFn) fallbackFn(finalX, finalY, maxW, maxH);
+            return { x: finalX, y: finalY, w: maxW, h: maxH };
+        }
+
+        const ratio = img.naturalWidth / img.naturalHeight;
+        let drawW = maxW;
+        let drawH = drawW / ratio;
+
+        if (drawH > maxH) {
+            drawH = maxH;
+            drawW = drawH * ratio;
+        }
+
+        let finalX = x;
+        if (anchorX === 'center') finalX = x - drawW / 2;
+        else if (anchorX === 'right') finalX = x - drawW;
+
+        let finalY = y;
+        if (anchorY === 'center') finalY = y - drawH / 2;
+        else if (anchorY === 'bottom') finalY = y - drawH;
+
+        ctx.drawImage(img, finalX, finalY, drawW, drawH);
+        return { x: finalX, y: finalY, w: drawW, h: drawH };
+    }
+
+    function drawRoundRectSafe(x, y, w, h, r) {
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(x, y, w, h, r);
+        } else {
+            ctx.rect(x, y, w, h);
+        }
+    }
+
+    function drawGearFallback(x, y, w, h) {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const outerR = Math.min(w, h) * 0.40;
+        const innerR = outerR * 0.68;
+        const teeth = 8;
+
+        ctx.save();
+        ctx.fillStyle = '#90a4ae';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(x, y, w, h, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        for (let i = 0; i < teeth * 2; i++) {
+            const angle = (i * Math.PI) / teeth;
+            const r = i % 2 === 0 ? outerR : innerR;
+            const px = cx + Math.cos(angle) * r;
+            const py = cy + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#eceff1';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR * 0.30, 0, Math.PI * 2);
+        ctx.fillStyle = '#546e7a';
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawLivesHUD() {
+        const heartSize = 28;
+        const gap = 6;
+        const count = Math.max(0, lives);
+        const totalHeartsWidth = count > 0 ? (count * heartSize) + ((count - 1) * gap) : 0;
+
+        const rightMargin = 780;
+        const heartsStartX = rightMargin - totalHeartsWidth;
+        const centerY = 32;
+
+        drawCartoonText(`${t('livesLabel')}:`, heartsStartX - 10, centerY, {
+            fontSize: 19,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4,
+            align: 'right',
+            baseline: 'middle'
+        });
+
+        for (let i = 0; i < count; i++) {
+            const hx = heartsStartX + i * (heartSize + gap);
+            const hy = centerY - heartSize / 2;
+
+            drawImageProportional(
+                menuImages.coracao,
+                hx + heartSize / 2,
+                hy + heartSize / 2,
+                heartSize,
+                heartSize,
+                'center',
+                'center',
+                (fx, fy, fw, fh) => {
+                    ctx.save();
+                    ctx.fillStyle = '#e53935';
+                    ctx.strokeStyle = '#141414';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(fx + fw * 0.32, fy + fh * 0.35, fw * 0.25, 0, Math.PI * 2);
+                    ctx.arc(fx + fw * 0.68, fy + fh * 0.35, fw * 0.25, 0, Math.PI * 2);
+                    ctx.lineTo(fx + fw * 0.92, fy + fh * 0.45);
+                    ctx.lineTo(fx + fw * 0.5, fy + fh * 0.92);
+                    ctx.lineTo(fx + fw * 0.08, fy + fh * 0.45);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            );
+        }
+    }
+
+    function drawHeldTrashRing(item) {
+        if (!item || !item.isDragging) return;
+
+        const ringColor = trashHighlightColors[item.type] || '#ffffff';
+        const radius = item.size * 0.62;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = ringColor + '33';
+        ctx.fill();
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#141414';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = ringColor;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    let trashes = [];
+    let bgTrashes = [];
+    let draggedTrash = null;
+
+    function createFallingItem(yPos = -40, speedMin = 1.2, speedMax = 2.6) {
+        const randomType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+        return {
+            type: randomType.type,
+            x: Math.random() * 700 + 50,
+            y: yPos,
+            size: 48,
+            speed: speedMin + Math.random() * (speedMax - speedMin),
+            isDragging: false
+        };
+    }
+
+    function seedBackgroundTrashes() {
+        bgTrashes = [];
+        for (let i = 0; i < 6; i++) {
+            bgTrashes.push(createFallingItem(Math.random() * 420, 1.2, 2.4));
+        }
+    }
+
+    function updateDynamicBackground() {
+        bgFrameCount++;
+        if (bgFrameCount % 55 === 0) {
+            bgTrashes.push(createFallingItem(-40, 1.3, 2.5));
+        }
+
+        for (let i = 0; i < bgTrashes.length; i++) {
+            const item = bgTrashes[i];
+            item.y += item.speed;
+
+            const img = trashImages[item.type];
+            if (isImgReady(img)) {
+                ctx.drawImage(img, item.x - item.size / 2, item.y - item.size / 2, item.size, item.size);
+            }
+
+            if (item.y > canvas.height + 50) {
+                bgTrashes.splice(i, 1);
+                i--;
+            }
+        }
+    }
+
+    function getSpeedPool(currentScore) {
+        if (currentScore < 3500) return [1, 1.5, 2];
+        if (currentScore < 5500) return [1.5, 2];
+        if (currentScore < 9000) return [2, 2.5, 3];
+        if (currentScore < 11500) return [2.5, 3];
+        if (currentScore < 15000) return [3, 3.5, 4];
+        return [3.5, 4, 4.5];
+    }
+
+    function spawnTrash() {
+        const randomType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+        const allowedSpeeds = getSpeedPool(score);
+        const selectedSpeed = allowedSpeeds[Math.floor(Math.random() * allowedSpeeds.length)];
+
+        trashes.push({
+            type: randomType.type,
+            x: Math.random() * 700 + 50,
+            y: -40,
+            size: 48,
+            speed: selectedSpeed,
+            isDragging: false
+        });
+    }
+
+    function beginMatchDirectly() {
+        closeNicknameModal();
+        isSettingsOpen = false;
+        isConfirmQuitOpen = false;
+        score = 0;
+        lives = 3;
+        spawnRate = 85;
+        frameCount = 0;
+        trashes = [];
+        draggedTrash = null;
+        gameState = 'playing';
+    }
+
+    function openTutorial(source = 'fromMenu') {
+        isSettingsOpen = false;
+        tutorialSource = source;
+        if (source === 'firstPlay') {
+            hasSeenTutorial = true;
+            safeStorageSet('operacaoColetaTutorialSeen', 'true');
+        }
+        gameState = 'tutorial';
+    }
+
+    function handlePlayButtonClick() {
+        if (!hasSeenTutorial) {
+            openTutorial('firstPlay');
+        } else {
+            beginMatchDirectly();
+        }
+    }
+
+    function returnToMenu() {
+        isConfirmQuitOpen = false;
+        isSettingsOpen = false;
+        if (draggedTrash) {
+            draggedTrash.isDragging = false;
+            draggedTrash = null;
+        }
+        trashes = [];
+        seedBackgroundTrashes();
+        gameState = 'menu';
+    }
+
+    // Teste na lixeira de plástico: mostra apenas o nome no idioma selecionado
+    function drawBinLabel(bin) {
+        if (bin.type !== 'Plástico') return;
+
+        const centerX = bin.x + bin.w / 2;
+        const labelY = bin.y + bin.h - 14;
+
+        drawCartoonText(getTypeLabel(bin.type), centerX, labelY, {
+            fontSize: 12,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 3.5,
+            align: 'center',
+            baseline: 'middle',
+            maxWidth: bin.w - 8
+        });
+    }
+
+    function drawBins() {
+        bins.forEach(bin => {
+            const img = binImages[bin.type];
+            if (isImgReady(img)) {
+                ctx.drawImage(img, bin.x, bin.y, bin.w, bin.h);
+            }
+            drawBinLabel(bin);
+        });
+    }
+
+    function drawPauseButton() {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(pauseBtn.x, pauseBtn.y, pauseBtn.w, pauseBtn.h, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#006064';
+        ctx.fillRect(pauseBtn.x + 11, pauseBtn.y + 10, 6, 20);
+        ctx.fillRect(pauseBtn.x + 23, pauseBtn.y + 10, 6, 20);
+        ctx.restore();
+    }
+
+    function drawSettingsModal() {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#f1f8e9';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 4;
+        drawRoundRectSafe(settingsBoxRect.x, settingsBoxRect.y, settingsBoxRect.w, settingsBoxRect.h, 18);
+        ctx.fill();
+        ctx.stroke();
+
+        drawCartoonText(t('settingsTitle'), 400, 124, {
+            fontSize: 26,
+            fillColor: '#ffb300',
+            strokeColor: '#141414',
+            strokeWidth: 5,
+            align: 'center'
+        });
+
+        drawCartoonText(t('languageLabel'), 400, 148, {
+            fontSize: 16,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4,
+            align: 'center'
+        });
+
+        const langOptions = [
+            { rect: langPtBtn, code: 'pt', label: t('langPt') },
+            { rect: langEnBtn, code: 'en', label: t('langEn') },
+            { rect: langEsBtn, code: 'es', label: t('langEs') }
+        ];
+
+        langOptions.forEach(opt => {
+            const active = currentLang === opt.code;
+            ctx.fillStyle = active ? '#66bb6a' : '#cfd8dc';
+            ctx.strokeStyle = '#141414';
+            ctx.lineWidth = active ? 3.5 : 2.5;
+            drawRoundRectSafe(opt.rect.x, opt.rect.y, opt.rect.w, opt.rect.h, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            const prefix = active ? "✓ " : "";
+            drawCartoonText(prefix + opt.label, opt.rect.x + opt.rect.w / 2, opt.rect.y + opt.rect.h / 2 + 1, {
+                fontSize: 18,
+                fillColor: active ? '#ffffff' : '#f5f5f5',
+                strokeColor: '#141414',
+                strokeWidth: 4,
+                align: 'center',
+                baseline: 'middle'
+            });
+        });
+
+        ctx.fillStyle = '#ef5350';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(closeSettingsBtn.x, closeSettingsBtn.y, closeSettingsBtn.w, closeSettingsBtn.h, 11);
+        ctx.fill();
+        ctx.stroke();
+
+        drawCartoonText(t('close'), closeSettingsBtn.x + closeSettingsBtn.w / 2, closeSettingsBtn.y + closeSettingsBtn.h / 2 + 1, {
+            fontSize: 18,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4,
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        ctx.restore();
+    }
+
+    function drawTutorialScreen() {
+        drawGameBackground();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawCartoonText(t('tutorialTitle'), 400, 44, {
+            fontSize: 32,
+            fillColor: '#ffb300',
+            strokeColor: '#141414',
+            strokeWidth: 5.5,
+            align: 'center'
+        });
+
+        drawCartoonText(t('tutorialRule1'), 400, 82, {
+            fontSize: 17,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4.5,
+            align: 'center'
+        });
+
+        drawCartoonText(t('tutorialRule2'), 400, 110, {
+            fontSize: 17,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4.5,
+            align: 'center'
+        });
+
+        drawCartoonText(t('tutorialLives'), 305, 144, {
+            fontSize: 18,
+            fillColor: '#ffe082',
+            strokeColor: '#141414',
+            strokeWidth: 4.5,
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        for (let i = 0; i < 3; i++) {
+            drawImageProportional(
+                menuImages.coracao,
+                448 + i * 32,
+                144,
+                26,
+                26,
+                'center',
+                'center',
+                (fx, fy, fw, fh) => {
+                    ctx.save();
+                    ctx.fillStyle = '#e53935';
+                    ctx.strokeStyle = '#141414';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(fx + fw * 0.5, fy + fh * 0.55, fw * 0.36, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            );
+        }
+
+        const colStartX = 68;
+        const colSpacing = 122;
+
+        bins.forEach((bin, idx) => {
+            const cx = colStartX + idx * colSpacing;
+            const trashItem = trashTypes[idx];
+
+            drawImageProportional(
+                trashImages[trashItem ? trashItem.type : null],
+                cx,
+                194,
+                38,
+                38,
+                'center',
+                'center',
+                (fx, fy, fw, fh) => {
+                    ctx.save();
+                    ctx.fillStyle = trashHighlightColors[bin.type] || '#fff59d';
+                    ctx.strokeStyle = '#141414';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.arc(fx + fw / 2, fy + fh / 2, fw * 0.42, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            );
+
+            drawCartoonText("↓", cx, 232, {
+                fontSize: 18,
+                fillColor: '#ffb300',
+                strokeColor: '#141414',
+                strokeWidth: 4,
+                align: 'center',
+                baseline: 'middle'
+            });
+
+            drawImageProportional(
+                binImages[bin.type],
+                cx,
+                244,
+                52,
+                72,
+                'center',
+                'top',
+                (fx, fy, fw, fh) => {
+                    ctx.save();
+                    ctx.fillStyle = trashHighlightColors[bin.type] || '#90a4ae';
+                    ctx.strokeStyle = '#141414';
+                    ctx.lineWidth = 2.5;
+                    drawRoundRectSafe(fx, fy, fw, fh, 6);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            );
+
+            drawCartoonText(getTypeLabel(bin.type), cx, 334, {
+                fontSize: 14,
+                fillColor: '#ffffff',
+                strokeColor: '#141414',
+                strokeWidth: 4,
+                align: 'center'
+            });
+        });
+
+        const isFirstPlay = tutorialSource === 'firstPlay';
+        ctx.fillStyle = isFirstPlay ? '#66bb6a' : '#ef5350';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(
+            tutorialActionBtn.x,
+            tutorialActionBtn.y,
+            tutorialActionBtn.w,
+            tutorialActionBtn.h,
+            12
+        );
+        ctx.fill();
+        ctx.stroke();
+
+        drawCartoonText(
+            isFirstPlay ? t('skipTutorial') : t('backToMenu'),
+            tutorialActionBtn.x + tutorialActionBtn.w / 2,
+            tutorialActionBtn.y + tutorialActionBtn.h / 2 + 1,
+            {
+                fontSize: 18,
+                fillColor: '#ffffff',
+                strokeColor: '#141414',
+                strokeWidth: 4.5,
+                align: 'center',
+                baseline: 'middle'
+            }
+        );
+    }
+
+    function drawPlayingScene(isPausedOverlay = false) {
+        drawGameBackground();
+        drawPauseButton();
+
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'left';
+        const labelNome = playerName ? `${playerName}  |  ` : '';
+        ctx.fillText(`${labelNome}${t('scoreLabel')}: ${score}`, 66, 38);
+
+        drawLivesHUD();
+        drawBins();
+
+        for (let i = 0; i < trashes.length; i++) {
+            const tItem = trashes[i];
+            if (tItem.isDragging) drawHeldTrashRing(tItem);
+            const img = trashImages[tItem.type];
+            if (isImgReady(img)) {
+                ctx.drawImage(img, tItem.x - tItem.size / 2, tItem.y - tItem.size / 2, tItem.size, tItem.size);
+            }
+        }
+
+        if (isPausedOverlay) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (!isConfirmQuitOpen) {
+                ctx.fillStyle = '#f1f8e9';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 4;
+                drawRoundRectSafe(220, 105, 360, 240, 18);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('pausedTitle'), 400, 160, {
+                    fontSize: 32,
+                    fillColor: '#ffb300',
+                    strokeColor: '#141414',
+                    strokeWidth: 5.5,
+                    align: 'center'
+                });
+
+                ctx.fillStyle = '#66bb6a';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(resumeBtn.x, resumeBtn.y, resumeBtn.w, resumeBtn.h, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('resumeGame'), resumeBtn.x + resumeBtn.w / 2, resumeBtn.y + resumeBtn.h / 2 + 1, {
+                    fontSize: 20,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+
+                ctx.fillStyle = '#ef5350';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(pauseMenuBtn.x, pauseMenuBtn.y, pauseMenuBtn.w, pauseMenuBtn.h, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('mainMenu'), pauseMenuBtn.x + pauseMenuBtn.w / 2, pauseMenuBtn.y + pauseMenuBtn.h / 2 + 1, {
+                    fontSize: 20,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            } else {
+                ctx.fillStyle = '#f1f8e9';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 4;
+                drawRoundRectSafe(190, 110, 420, 230, 18);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('quitConfirm1'), 400, 165, {
+                    fontSize: 19,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center'
+                });
+
+                drawCartoonText(t('quitConfirm2'), 400, 198, {
+                    fontSize: 19,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center'
+                });
+
+                ctx.fillStyle = '#ef5350';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(confirmYesBtn.x, confirmYesBtn.y, confirmYesBtn.w, confirmYesBtn.h, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('yes'), confirmYesBtn.x + confirmYesBtn.w / 2, confirmYesBtn.y + confirmYesBtn.h / 2 + 1, {
+                    fontSize: 21,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+
+                ctx.fillStyle = '#66bb6a';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(confirmNoBtn.x, confirmNoBtn.y, confirmNoBtn.w, confirmNoBtn.h, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                drawCartoonText(t('no'), confirmNoBtn.x + confirmNoBtn.w / 2, confirmNoBtn.y + confirmNoBtn.h / 2 + 1, {
+                    fontSize: 21,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            }
+        }
+    }
+
+    function drawGameOverScreen() {
+        drawGameBackground();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawCartoonText(t('gameOverTitle'), 400, 132, {
+            fontSize: 36,
+            fillColor: '#ffb300',
+            strokeColor: '#141414',
+            strokeWidth: 5.5,
+            align: 'center'
+        });
+
+        let infoY = 180;
+        if (playerName) {
+            drawCartoonText(`${t('playerLabel')}: ${playerName}`, 400, infoY, {
+                fontSize: 23,
+                fillColor: '#ffffff',
+                strokeColor: '#141414',
+                strokeWidth: 5,
+                align: 'center'
+            });
+            infoY += 36;
+        }
+
+        drawCartoonText(`${t('pointsLabel')}: ${score.toLocaleString('pt-BR')}`, 400, infoY, {
+            fontSize: 24,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 5,
+            align: 'center'
+        });
+
+        drawCartoonText(`${t('highScoreLabel')}: ${highScore.toLocaleString('pt-BR')}`, 400, infoY + 38, {
+            fontSize: 25,
+            fillColor: '#ffb300',
+            strokeColor: '#141414',
+            strokeWidth: 5.5,
+            align: 'center'
+        });
+
+        ctx.fillStyle = '#66bb6a';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(retryBtn.x, retryBtn.y, retryBtn.w, retryBtn.h, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        drawCartoonText(t('playAgain'), retryBtn.x + retryBtn.w / 2, retryBtn.y + retryBtn.h / 2 + 1, {
+            fontSize: 17,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4.5,
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        ctx.fillStyle = '#ef5350';
+        ctx.strokeStyle = '#141414';
+        ctx.lineWidth = 3;
+        drawRoundRectSafe(gameOverMenuBtn.x, gameOverMenuBtn.y, gameOverMenuBtn.w, gameOverMenuBtn.h, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        drawCartoonText(t('mainMenu'), gameOverMenuBtn.x + gameOverMenuBtn.w / 2, gameOverMenuBtn.y + gameOverMenuBtn.h / 2 + 1, {
+            fontSize: 17,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 4.5,
+            align: 'center',
+            baseline: 'middle'
+        });
+    }
+
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+        const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+        const touchObj = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]);
+        const clientX = touchObj ? touchObj.clientX : evt.clientX;
+        const clientY = touchObj ? touchObj.clientY : evt.clientY;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function isInsideRect(pos, rect) {
+        if (!rect) return false;
+        return pos.x >= rect.x && pos.x <= rect.x + rect.w && pos.y >= rect.y && pos.y <= rect.y + rect.h;
+    }
+
+    function handleStart(evt) {
+        if (isNicknameModalOpen) return;
+
+        const pos = getMousePos(evt);
+
+        if (isSettingsOpen) {
+            evt.preventDefault();
+            if (isInsideRect(pos, langPtBtn)) {
+                setLanguage('pt');
+            } else if (isInsideRect(pos, langEnBtn)) {
+                setLanguage('en');
+            } else if (isInsideRect(pos, langEsBtn)) {
+                setLanguage('es');
+            } else if (isInsideRect(pos, closeSettingsBtn) || !isInsideRect(pos, settingsBoxRect)) {
+                isSettingsOpen = false;
+            }
+            return;
+        }
+
+        if (gameState === 'menu') {
+            evt.preventDefault();
+
+            if (isInsideRect(pos, menuHitboxes.jogar)) {
+                handlePlayButtonClick();
+            } else if (isInsideRect(pos, menuHitboxes.apelido)) {
+                openNicknameModal();
+            } else if (isInsideRect(pos, menuHitboxes.tutorial)) {
+                openTutorial('fromMenu');
+            } else if (isInsideRect(pos, menuHitboxes.ranking)) {
+                console.log("Botão Ranking clicado (lógica do ranking será adicionada na próxima etapa).");
+            } else if (isInsideRect(pos, menuHitboxes.config)) {
+                isSettingsOpen = true;
+            }
+            return;
+        }
+
+        if (gameState === 'tutorial') {
+            evt.preventDefault();
+            if (isInsideRect(pos, tutorialActionBtn)) {
+                if (tutorialSource === 'firstPlay') {
+                    beginMatchDirectly();
+                } else {
+                    returnToMenu();
+                }
+            }
+            return;
+        }
+
+        if (gameState === 'paused') {
+            evt.preventDefault();
+
+            if (!isConfirmQuitOpen) {
+                if (isInsideRect(pos, resumeBtn)) {
+                    gameState = 'playing';
+                } else if (isInsideRect(pos, pauseMenuBtn)) {
+                    isConfirmQuitOpen = true;
+                }
+            } else {
+                if (isInsideRect(pos, confirmYesBtn)) {
+                    returnToMenu();
+                } else if (isInsideRect(pos, confirmNoBtn)) {
+                    isConfirmQuitOpen = false;
+                }
+            }
+            return;
+        }
+
+        if (gameState === 'gameover') {
+            evt.preventDefault();
+            if (isInsideRect(pos, retryBtn)) {
+                beginMatchDirectly();
+            } else if (isInsideRect(pos, gameOverMenuBtn)) {
+                returnToMenu();
+            }
+            return;
+        }
+
+        if (gameState === 'playing') {
+            evt.preventDefault();
+
+            if (isInsideRect(pos, pauseBtn)) {
+                if (draggedTrash) {
+                    draggedTrash.isDragging = false;
+                    draggedTrash = null;
+                }
+                isConfirmQuitOpen = false;
+                gameState = 'paused';
+                return;
+            }
+
+            for (let i = trashes.length - 1; i >= 0; i--) {
+                let trashItem = trashes[i];
+                if (pos.x >= trashItem.x - trashItem.size/2 && pos.x <= trashItem.x + trashItem.size/2 &&
+                    pos.y >= trashItem.y - trashItem.size/2 && pos.y <= trashItem.y + trashItem.size/2) {
+                    trashItem.isDragging = true;
+                    draggedTrash = trashItem;
+                    break;
+                }
+            }
+        }
+    }
+
+    function handleMove(evt) {
+        if (draggedTrash && gameState === 'playing') {
+            evt.preventDefault();
+            const pos = getMousePos(evt);
+            draggedTrash.x = pos.x;
+            draggedTrash.y = pos.y;
+        }
+    }
+
+    function handleEnd(evt) {
+        if (draggedTrash && gameState === 'playing') {
+            let droppedInBin = false;
+            bins.forEach(bin => {
+                if (draggedTrash.x >= bin.x && draggedTrash.x <= bin.x + bin.w &&
+                    draggedTrash.y >= bin.y && draggedTrash.y <= bin.y + bin.h) {
+
+                    droppedInBin = true;
+                    if (draggedTrash.type === bin.type) {
+                        score += 50;
+                    } else {
+                        lives--;
+                    }
+                }
+            });
+
+            if (droppedInBin) {
+                trashes = trashes.filter(item => item !== draggedTrash);
+            }
+
+            draggedTrash.isDragging = false;
+            draggedTrash = null;
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    canvas.addEventListener('touchmove', handleMove, {passive: false});
+    canvas.addEventListener('touchend', handleEnd);
+
+    function drawMenuScreen() {
+        drawGameBackground();
+        updateDynamicBackground();
+
+        drawImageProportional(
+            menuImages.logo,
+            0, 0, 275, 175,
+            'left', 'top',
+            (x, y, w, h) => {
+                drawCartoonText(t('gameTitleFallback'), x + 15, y + 50, {
+                    fontSize: 26,
+                    fillColor: '#ffb300',
+                    strokeColor: '#141414',
+                    strokeWidth: 5,
+                    align: 'left'
+                });
+            }
+        );
+
+        const apelidoBox = drawImageProportional(
+            menuImages.apelido,
+            800, 0, 260, 90,
+            'right', 'top',
+            (x, y, w, h) => {
+                ctx.fillStyle = '#7cb342';
+                ctx.fillRect(x + 12, y + 8, w - 20, h - 18);
+                ctx.strokeStyle = '#1b1b1b';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x + 12, y + 8, w - 20, h - 18);
+            }
+        );
+        menuHitboxes.apelido = apelidoBox;
+
+        if (playerName) {
+            const centerX = apelidoBox.x + apelidoBox.w / 2;
+            const centerY = apelidoBox.y + apelidoBox.h / 2 + 1;
+            drawCartoonText(playerName, centerX, centerY, {
+                fontSize: 23,
+                fillColor: '#ffffff',
+                strokeColor: '#141414',
+                strokeWidth: 5,
+                align: 'center',
+                baseline: 'middle',
+                maxWidth: apelidoBox.w * 0.62
+            });
+        }
+
+        // Botão Tutorial quadrado (54x54 px), em cima
+        menuHitboxes.tutorial = menuTutorialBtnRect;
+        drawImageProportional(
+            menuImages.tutorial,
+            menuTutorialBtnRect.x + menuTutorialBtnRect.w / 2,
+            menuTutorialBtnRect.y + menuTutorialBtnRect.h / 2,
+            menuTutorialBtnRect.w,
+            menuTutorialBtnRect.h,
+            'center',
+            'center',
+            (x, y, w, h) => {
+                ctx.fillStyle = '#4fc3f7';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(x, y, w, h, 10);
+                ctx.fill();
+                ctx.stroke();
+                drawCartoonText("?", x + w / 2, y + h / 2 + 1, {
+                    fontSize: 24,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            }
+        );
+
+        // Botão Ranking quadrado (54x54 px), abaixo do Tutorial e alinhado
+        menuHitboxes.ranking = menuRankingBtnRect;
+        drawImageProportional(
+            menuImages.ranking,
+            menuRankingBtnRect.x + menuRankingBtnRect.w / 2,
+            menuRankingBtnRect.y + menuRankingBtnRect.h / 2,
+            menuRankingBtnRect.w,
+            menuRankingBtnRect.h,
+            'center',
+            'center',
+            (x, y, w, h) => {
+                ctx.fillStyle = '#ffb300';
+                ctx.strokeStyle = '#141414';
+                ctx.lineWidth = 3;
+                drawRoundRectSafe(x, y, w, h, 10);
+                ctx.fill();
+                ctx.stroke();
+                drawCartoonText(t('rankingFallback'), x + w / 2, y + h / 2 + 1, {
+                    fontSize: 16,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            }
+        );
+
+        // Botão Configurações quadrado (54x54 px) no cantinho inferior esquerdo
+        menuHitboxes.config = menuConfigBtnRect;
+        drawImageProportional(
+            menuImages.config,
+            menuConfigBtnRect.x + menuConfigBtnRect.w / 2,
+            menuConfigBtnRect.y + menuConfigBtnRect.h / 2,
+            menuConfigBtnRect.w,
+            menuConfigBtnRect.h,
+            'center',
+            'center',
+            drawGearFallback
+        );
+
+        menuHitboxes.jogar = drawImageProportional(
+            menuImages.jogar,
+            400, 260, 330, 100,
+            'center', 'center',
+            (x, y, w, h) => {
+                ctx.fillStyle = '#7cb342';
+                ctx.fillRect(x + 15, y + 10, w - 30, h - 20);
+                ctx.strokeStyle = '#1b1b1b';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x + 15, y + 10, w - 30, h - 20);
+                drawCartoonText(t('playFallback'), x + w / 2, y + h / 2, {
+                    fontSize: 26,
+                    fillColor: '#ffffff',
+                    strokeColor: '#141414',
+                    strokeWidth: 4.5,
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            }
+        );
+
+        drawCartoonText(t('recordLabel'), 785, 352, {
+            fontSize: 28,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 5.5,
+            align: 'right'
+        });
+
+        drawCartoonText(highScore.toLocaleString('pt-BR'), 785, 398, {
+            fontSize: 36,
+            fillColor: '#ffb300',
+            strokeColor: '#141414',
+            strokeWidth: 5.5,
+            align: 'right'
+        });
+
+        if (isSettingsOpen) {
+            drawSettingsModal();
+        }
+    }
+
+    function update() {
+        try {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'menu') {
+                drawMenuScreen();
+            } else if (gameState === 'tutorial') {
+                drawTutorialScreen();
+            } else if (gameState === 'playing') {
+                frameCount++;
+                if (frameCount % spawnRate === 0) spawnTrash();
+
+                for (let i = 0; i < trashes.length; i++) {
+                    let trashItem = trashes[i];
+
+                    if (!trashItem.isDragging) {
+                        trashItem.y += trashItem.speed;
+                    }
+
+                    if (!trashItem.isDragging && trashItem.y >= bins[0].y) {
+                        let hitBin = null;
+
+                        bins.forEach(bin => {
+                            if (trashItem.x >= bin.x && trashItem.x <= bin.x + bin.w &&
+                                trashItem.y >= bin.y && trashItem.y <= bin.y + bin.h) {
+                                hitBin = bin;
+                            }
+                        });
+
+                        if (hitBin) {
+                            if (trashItem.type === hitBin.type) {
+                                score += 50;
+                            } else {
+                                lives--;
+                            }
+                            trashes.splice(i, 1);
+                            i--;
+                        } else if (trashItem.y >= canvas.height) {
+                            lives--;
+                            trashes.splice(i, 1);
+                            i--;
+                        }
+                    }
+                }
+
+                if (lives <= 0) {
+                    if (score > highScore) {
+                        highScore = score;
+                        safeStorageSet('operacaoColetaHighScore', highScore);
+                    }
+                    gameState = 'gameover';
+                } else {
+                    drawPlayingScene(false);
+                }
+            } else if (gameState === 'paused') {
+                drawPlayingScene(true);
+            } else if (gameState === 'gameover') {
+                drawGameOverScreen();
+            } else {
+                gameState = 'menu';
+                drawMenuScreen();
+            }
+
+            if (lastErrorMessage) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(183, 28, 28, 0.85)';
+                ctx.fillRect(10, 10, 780, 28);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '13px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('Erro: ' + lastErrorMessage, 18, 29);
+                ctx.restore();
+            }
+        } catch (err) {
+            lastErrorMessage = err && err.message ? err.message : String(err);
+            drawGameBackground();
+            drawCartoonText(t('gameTitleFallback'), 400, 180, {
+                fontSize: 28,
+                fillColor: '#ffb300',
+                strokeColor: '#141414',
+                strokeWidth: 5
+            });
+        }
+
+        requestAnimationFrame(update);
+    }
+
+    try {
+        applyLanguageToDOM();
+        seedBackgroundTrashes();
+        preloadImages();
+    } catch (initErr) {
+        lastErrorMessage = initErr && initErr.message ? initErr.message : String(initErr);
+    }
+    update();
+});
+</script>
+
+</body>
+</html>
