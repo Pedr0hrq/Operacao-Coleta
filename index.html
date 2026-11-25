@@ -876,13 +876,16 @@ window.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Escada de velocidade por faixa de pontuação
     function getSpeedPool(currentScore) {
-        if (currentScore < 3500) return [1, 1.5, 2];
-        if (currentScore < 5500) return [1.5, 2];
-        if (currentScore < 9000) return [2, 2.5, 3];
-        if (currentScore < 11500) return [2.5, 3];
-        if (currentScore < 15000) return [3, 3.5, 4];
-        return [3.5, 4, 4.5];
+        if (currentScore < 5000) return [1];
+        if (currentScore < 10000) return [2];
+        if (currentScore < 15000) return [3];
+        if (currentScore < 30000) return [4];
+        if (currentScore < 50000) return [5];
+        if (currentScore < 80000) return [6];
+        if (currentScore < 100000) return [7];
+        return [8];
     }
 
     function spawnTrash() {
