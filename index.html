@@ -233,6 +233,7 @@ window.addEventListener('DOMContentLoaded', function () {
             fullscreenClose: "Sair da Tela Cheia [F]",
             nicknameTitle: "Escolha seu Apelido",
             nicknamePlaceholder: "Ex: cachorrinho",
+            defaultNicknameBtn: "Apelido",
             save: "Salvar",
             cancel: "Cancelar",
             gameTitleFallback: "OPERAÇÃO COLETA",
@@ -280,6 +281,7 @@ window.addEventListener('DOMContentLoaded', function () {
             fullscreenClose: "Exit Fullscreen [F]",
             nicknameTitle: "Choose your Nickname",
             nicknamePlaceholder: "Ex: little_dog",
+            defaultNicknameBtn: "Nickname",
             save: "Save",
             cancel: "Cancel",
             gameTitleFallback: "COLLECTION OPERATION",
@@ -327,6 +329,7 @@ window.addEventListener('DOMContentLoaded', function () {
             fullscreenClose: "Salir de Pantalla Completa [F]",
             nicknameTitle: "Elige tu Apodo",
             nicknamePlaceholder: "Ej: perrito",
+            defaultNicknameBtn: "Apodo",
             save: "Guardar",
             cancel: "Cancelar",
             gameTitleFallback: "OPERACIÓN COLECTA",
@@ -376,6 +379,12 @@ window.addEventListener('DOMContentLoaded', function () {
 
     function getTypeLabel(internalType) {
         return (I18N[currentLang] && I18N[currentLang].types && I18N[currentLang].types[internalType]) || internalType;
+    }
+
+    function getPlayButtonAsset() {
+        if (currentLang === 'en') return menuImages.jogar_en;
+        if (currentLang === 'es') return menuImages.jogar_es;
+        return menuImages.jogar;
     }
 
     function updateFullscreenButtonLabel() {
@@ -476,11 +485,13 @@ window.addEventListener('DOMContentLoaded', function () {
     // Botão inferior do tutorial ("Pular >>" na 1ª vez ou "Voltar ao Menu" pelo menu)
     const tutorialActionBtn = { x: 295, y: 388, w: 210, h: 42 };
 
-    // Botões quadrados (54x54 px)
+    // Botões médios de Tutorial e Ranking (64x64 px) e Configurações (54x54 px)
+    const sideBtnSize = 64;
+    const sideBtnX = 785 - sideBtnSize; // 721
+    const menuTutorialBtnRect = { x: sideBtnX, y: 86,  w: sideBtnSize, h: sideBtnSize };
+    const menuRankingBtnRect  = { x: sideBtnX, y: 158, w: sideBtnSize, h: sideBtnSize };
+
     const squareBtnSize = 54;
-    const squareBtnX = 785 - squareBtnSize; // 731
-    const menuTutorialBtnRect = { x: squareBtnX, y: 84,  w: squareBtnSize, h: squareBtnSize };
-    const menuRankingBtnRect  = { x: squareBtnX, y: 146, w: squareBtnSize, h: squareBtnSize };
     const menuConfigBtnRect   = { x: 15, y: 450 - 15 - squareBtnSize, w: squareBtnSize, h: squareBtnSize };
 
     // Botões dentro do modal de Configurações
@@ -529,6 +540,8 @@ window.addEventListener('DOMContentLoaded', function () {
         { key: 'tutorial', candidates: ['btn_tutorial'] },
         { key: 'config',   candidates: ['btn_config'] },
         { key: 'jogar',    candidates: ['btn_jogar'] },
+        { key: 'jogar_en', candidates: ['btn_jogar_en', 'btn_play'] },
+        { key: 'jogar_es', candidates: ['btn_jogar_es', 'btn_jugar'] },
         { key: 'coracao',  candidates: ['coracao'] }
     ];
 
@@ -946,14 +959,14 @@ window.addEventListener('DOMContentLoaded', function () {
         gameState = 'menu';
     }
 
-    // Teste na lixeira de plástico: mostra apenas o nome no idioma selecionado
+    // Lixeira de plástico: mostra o nome traduzido em CAIXA ALTA
     function drawBinLabel(bin) {
         if (bin.type !== 'Plástico') return;
 
         const centerX = bin.x + bin.w / 2;
         const labelY = bin.y + bin.h - 14;
 
-        drawCartoonText(getTypeLabel(bin.type), centerX, labelY, {
+        drawCartoonText(getTypeLabel(bin.type).toUpperCase(), centerX, labelY, {
             fontSize: 12,
             fillColor: '#ffffff',
             strokeColor: '#141414',
@@ -1618,21 +1631,20 @@ window.addEventListener('DOMContentLoaded', function () {
         );
         menuHitboxes.apelido = apelidoBox;
 
-        if (playerName) {
-            const centerX = apelidoBox.x + apelidoBox.w / 2;
-            const centerY = apelidoBox.y + apelidoBox.h / 2 + 1;
-            drawCartoonText(playerName, centerX, centerY, {
-                fontSize: 23,
-                fillColor: '#ffffff',
-                strokeColor: '#141414',
-                strokeWidth: 5,
-                align: 'center',
-                baseline: 'middle',
-                maxWidth: apelidoBox.w * 0.62
-            });
-        }
+        const nicknameLabel = playerName ? playerName : t('defaultNicknameBtn');
+        const centerX = apelidoBox.x + apelidoBox.w / 2;
+        const centerY = apelidoBox.y + apelidoBox.h / 2 + 1;
+        drawCartoonText(nicknameLabel, centerX, centerY, {
+            fontSize: 22,
+            fillColor: '#ffffff',
+            strokeColor: '#141414',
+            strokeWidth: 5,
+            align: 'center',
+            baseline: 'middle',
+            maxWidth: apelidoBox.w * 0.62
+        });
 
-        // Botão Tutorial quadrado (54x54 px), em cima
+        // Botão Tutorial médio (64x64 px), em cima
         menuHitboxes.tutorial = menuTutorialBtnRect;
         drawImageProportional(
             menuImages.tutorial,
@@ -1646,21 +1658,21 @@ window.addEventListener('DOMContentLoaded', function () {
                 ctx.fillStyle = '#4fc3f7';
                 ctx.strokeStyle = '#141414';
                 ctx.lineWidth = 3;
-                drawRoundRectSafe(x, y, w, h, 10);
+                drawRoundRectSafe(x, y, w, h, 12);
                 ctx.fill();
                 ctx.stroke();
                 drawCartoonText("?", x + w / 2, y + h / 2 + 1, {
-                    fontSize: 24,
+                    fontSize: 28,
                     fillColor: '#ffffff',
                     strokeColor: '#141414',
-                    strokeWidth: 4,
+                    strokeWidth: 4.5,
                     align: 'center',
                     baseline: 'middle'
                 });
             }
         );
 
-        // Botão Ranking quadrado (54x54 px), abaixo do Tutorial e alinhado
+        // Botão Ranking médio (64x64 px), abaixo do Tutorial e alinhado
         menuHitboxes.ranking = menuRankingBtnRect;
         drawImageProportional(
             menuImages.ranking,
@@ -1674,21 +1686,21 @@ window.addEventListener('DOMContentLoaded', function () {
                 ctx.fillStyle = '#ffb300';
                 ctx.strokeStyle = '#141414';
                 ctx.lineWidth = 3;
-                drawRoundRectSafe(x, y, w, h, 10);
+                drawRoundRectSafe(x, y, w, h, 12);
                 ctx.fill();
                 ctx.stroke();
                 drawCartoonText(t('rankingFallback'), x + w / 2, y + h / 2 + 1, {
-                    fontSize: 16,
+                    fontSize: 18,
                     fillColor: '#ffffff',
                     strokeColor: '#141414',
-                    strokeWidth: 4,
+                    strokeWidth: 4.5,
                     align: 'center',
                     baseline: 'middle'
                 });
             }
         );
 
-        // Botão Configurações quadrado (54x54 px) no canto inferior esquerdo
+        // Botão Configurações (54x54 px) no canto inferior esquerdo
         menuHitboxes.config = menuConfigBtnRect;
         drawImageProportional(
             menuImages.config,
@@ -1702,7 +1714,7 @@ window.addEventListener('DOMContentLoaded', function () {
         );
 
         menuHitboxes.jogar = drawImageProportional(
-            menuImages.jogar,
+            getPlayButtonAsset(),
             400, 260, 330, 100,
             'center', 'center',
             (x, y, w, h) => {
